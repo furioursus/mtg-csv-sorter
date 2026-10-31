@@ -106,4 +106,6 @@ The tests run against a stand-in for Scryfall (`test/fake-scryfall.js`) over Scr
 
 MIT; see [LICENSE](LICENSE). The page's display font, Bricolage Grotesque, is under the SIL Open Font License; see [fonts/OFL.txt](fonts/OFL.txt).
 
+The card art in `og-image.jpg` (the link preview) is from [*Hot Fix*](https://scryfall.com/card/ust/133/hot-fix) (Unstable) by David Sladek, copyright Wizards of the Coast, LLC, used as unofficial Fan Content under the [Wizards of the Coast Fan Content Policy](https://company.wizards.com/en/legal/fancontentpolicy). It isn't covered by the MIT license.
+
 Card data comes from Scryfall. Not affiliated with Wizards of the Coast or Scryfall.

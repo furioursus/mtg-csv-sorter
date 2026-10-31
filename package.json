@@ -1,0 +1,22 @@
+{
+  "name": "mtg-csv-sorter",
+  "version": "0.1.0",
+  "description": "Sort a Magic: The Gathering card CSV by color (W/U/B/R/G/Multi/Colorless/Lands), using Scryfall for colors and IDs",
+  "license": "MIT",
+  "private": true,
+  "main": "sorter.js",
+  "bin": {
+    "mtg-csv-sorter": "cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/furioursus/mtg-csv-sorter.git"
+  },
+  "homepage": "https://furioursus.github.io/mtg-csv-sorter/"
+}

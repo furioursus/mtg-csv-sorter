@@ -29,7 +29,7 @@ jobs:
         with:
           node-version: "24"
       - run: npm test
-      - run: mkdir _site && cp index.html sorter.js LICENSE _site/
+      - run: mkdir _site && cp -r index.html sorter.js LICENSE fonts _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:

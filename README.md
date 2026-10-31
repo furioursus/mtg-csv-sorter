@@ -104,6 +104,6 @@ The tests run against a stand-in for Scryfall (`test/fake-scryfall.js`) over Scr
 
 ## License
 
-MIT; see [LICENSE](LICENSE).
+MIT; see [LICENSE](LICENSE). The page's display font, Bricolage Grotesque, is under the SIL Open Font License; see [fonts/OFL.txt](fonts/OFL.txt).
 
 Card data comes from Scryfall. Not affiliated with Wizards of the Coast or Scryfall.

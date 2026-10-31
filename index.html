@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MTG CSV sorter: sort a card list by color</title>
 <meta name="description" content="Sort a Magic: The Gathering card CSV White, Blue, Black, Red, Green, Multicolor, Colorless, Lands. Runs in your browser; looks cards up on Scryfall.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://furioursus.github.io/mtg-csv-sorter/">
+<meta property="og:title" content="MTG CSV sorter: sort a card list by color">
+<meta property="og:description" content="Sort a Magic card CSV White, Blue, Black, Red, Green, Multicolor, Colorless, then Lands. Runs in your browser; looks cards up on Scryfall.">
+<meta property="og:image" content="https://furioursus.github.io/mtg-csv-sorter/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Art from the Magic card Hot Fix by David Sladek: a startled knight in plate armor holds up a sheet of paper as gray moths crawl over it and swarm the air">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSItNCAtNCA3Ni4zMSA3Mi43MSI+CjxzdHlsZT4KLnB7ZmlsbDojYzIwMzZmfS5se2ZpbGw6IzRkNjgwOH0uaXtmaWxsOiMxYzE4MjF9LmZ7ZmlsbDojZThlM2UyfQpAbWVkaWEgKHByZWZlcnMtY29sb3Itc2NoZW1lOmRhcmspey5we2ZpbGw6I2ZmMmY4Zn0ubHtmaWxsOiNjNmZmM2R9Lml7ZmlsbDojZjNmMWU4fS5me2ZpbGw6IzE0MTQxNH19Cjwvc3R5bGU+CjxkZWZzPgo8ZyBpZD0iYiI+CjxwYXRoIGQ9Ik01MC44NCw3LjYyQzMzLjMzLTEuMDIsMS43MSw5LjM2LjA3LDMwLjg3Yy0xLjU4LDI1LjQyLDIzLDQwLjMxLDQ1Ljk3LDMxLjEsMjUuNzMtOS4zNywzMS40NS00MS43MSw0Ljk4LTU0LjI2bC0uMTgtLjA4WiIvPgo8cGF0aCBkPSJNNjQuNTYsNS4xNGMtLjEtMy4zOS01Ljc0LTYuMDMtOS4yOS00LjcyLTIuNDgsMS4zNi0yLjcsMi40NC0zLjI3LDcuMDctMS42NCwxMy40NSwxMi42Miw4LjE0LDEyLjU1LTIuMzVaIi8+CjxwYXRoIGQ9Ik0xMi45NCwxMC40OWMtLjc2LTMuNDctMS42Mi02Ljc2LTUuOTgtNi42Mi04Ljg5LjI4LTguOTIsOC45LTEuNzUsMTQuOTksNC41OCwzLjksOS40My0xLjE0LDcuNzQtOC4zN1oiLz4KPC9nPgo8L2RlZnM+Cjx1c2UgeGxpbms6aHJlZj0iI2IiIGhyZWY9IiNiIiBjbGFzcz0icCIgeD0iLTMiLz4KPHVzZSB4bGluazpocmVmPSIjYiIgaHJlZj0iI2IiIGNsYXNzPSJsIiB4PSIzIi8+Cjx1c2UgeGxpbms6aHJlZj0iI2IiIGhyZWY9IiNiIiBjbGFzcz0iaSIvPgo8ZyBjbGFzcz0iZiI+CjxwYXRoIGQ9Ik01Ny41MSwzLjljMi4wMywxLjM1LDIuNjEsNC45NSwyLjA4LDcuMTktLjEyLjQ3LS40Ni42Ni0uODkuMzItMS4wOS0uOTYtMi42NC0xLjY1LTMuODYtMi40OC0uMi0uMTYtLjQ1LS4zNS0uNDgtLjYxLjEzLTEuNTIuOTktNC45NCwzLjAyLTQuNDlsLjEzLjA2WiIvPgo8cGF0aCBkPSJNNS4xNiwxNi4xNWMtLjg5LS42LTEuMDYtMy4zOS0xLjEyLTQuNzIuMDMtMS44LjA4LTQuNzIsMi42Mi00LjM3LDEuMTcuMTUsMi4zNC42OCwyLjg2LDEuNzQuNDQsMS4wMy44MywyLjI4LjE4LDMuMjMtLjcyLDEuMDQtMS43MiwxLjY2LTIuNjIsMi41Ny0uNjkuNjItMS40MSwxLjUzLTEuODQsMS41NmgtLjA5WiIvPgo8cGF0aCBkPSJNNDMuNDEsMjcuNDRjLS41MiwxLjE4LTIuMSwxLjk3LTMuNTQsMi4yLS4zOS4wOC0uOS4xMy0xLjE5LjQzLS4xOC4xOC0uMjYuNDYtLjI3Ljc4LjE1LDIuNjIuNDYsNS4xMi43Niw3LjU0LjM3LDIuOC43OCw1LjY3LDEuMzEsOC41OS4xMi43MS4zMywxLjY3LjIxLDIuMzgtLjMzLjk5LTEuMS0uMzUtMS4xNi0uODktMS4wOC01LjYzLTEuNzQtMTEuNjQtMi4yNy0xNy4zMi0uMDMtLjI2LS4wNy0uNTEtLjE1LS43My0uMjItLjg0LTEuMzMtLjgzLTIuMDUtMS4wOS0uNTctLjIxLTEuMjEtLjY4LTEuNzMtMS4xLTYuNDctNS4zNywxMS4wNC04LjE0LDEwLjE1LS45NmwtLjA2LjE2WiIvPgo8cGF0aCBkPSJNNTAuNzQsMjVjLTEuODgsMS4zMS0yLjIzLTIuOTUtMS45Mi0zLjk2LjctMi4zNSwxLjU3LTIuMDIsMi4xMy0uODQuNTcsMS4zOC45MiwzLjUxLS4xMiw0LjcybC0uMDkuMDhaIi8+CjxwYXRoIGQ9Ik0yNC4wNywyOC4zNmMtMi40NC44LTEuOTktNC4zLTEuMzUtNS4xNiwyLjUyLTIuMjIsMi42Niw0LjE5LDEuNDUsNS4xMWwtLjA5LjA1WiIvPgo8L2c+Cjwvc3ZnPgo=">
 <script>
 // Theme switch: a saved choice only while it differs from the system's mode.
@@ -277,7 +286,7 @@ button[aria-busy="true"] { cursor: progress !important; opacity: 1; animation: u
     </section>
   </main>
 
-  <footer>Card data from <a href="https://scryfall.com">Scryfall</a>. Not affiliated with Wizards of the Coast or Scryfall. <a href="https://github.com/furioursus/mtg-csv-sorter">Source</a>, MIT.</footer>
+  <footer>Card data from <a href="https://scryfall.com">Scryfall</a>. <a href="https://github.com/furioursus/mtg-csv-sorter">Source</a>, MIT. Portions of this page are unofficial Fan Content permitted under the Wizards of the Coast Fan Content Policy. Link preview art: <a href="https://scryfall.com/card/ust/133/hot-fix"><cite>Hot Fix</cite></a> by David Sladek, copyright Wizards of the Coast, LLC, which doesn’t produce or endorse this page. Not affiliated with Scryfall.</footer>
 </div>
 
 <script src="sorter.js"></script>

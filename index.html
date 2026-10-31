@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTG CSV sorter: sort a card list by color</title>
+<meta name="description" content="Sort a Magic: The Gathering card CSV White, Blue, Black, Red, Green, Multicolor, Colorless, Lands. Runs in your browser; looks cards up on Scryfall.">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfaf7; --fg: #1d1b18; --muted: #6a645b; --line: #dcd6cc; --card: #ffffff;
+    --accent: #7a4b12; --accent-fg: #ffffff; --bad: #a3271d;
+    accent-color: var(--accent);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161513; --fg: #ece8e1; --muted: #a59d91; --line: #3a3631; --card: #1f1d1a;
+      --accent: #e0a458; --accent-fg: #1d1b18; --bad: #ff8a7a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); }
+  main { max-width: 52rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+  h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1.1rem; margin: 2rem 0 .5rem; }
+  p { margin: .5rem 0; }
+  .muted { color: var(--muted); }
+  a { color: var(--accent); }
+  form { display: grid; gap: 1rem; margin-top: 1.5rem; }
+  .drop {
+    display: grid; gap: .5rem; place-items: center; text-align: center;
+    padding: 1.75rem 1rem; border: 2px dashed var(--line); border-radius: .75rem; background: var(--card);
+  }
+  .drop.over { border-color: var(--accent); }
+  .drop strong { font-size: 1.05rem; }
+  input[type=file]::file-selector-button, button {
+    font: inherit; padding: .5rem 1rem; border-radius: .5rem; border: 1px solid var(--accent);
+    background: var(--accent); color: var(--accent-fg); cursor: pointer;
+  }
+  input[type=file]::file-selector-button { margin-right: .75rem; }
+  button:disabled { opacity: .5; cursor: progress; }
+  fieldset { border: 1px solid var(--line); border-radius: .75rem; padding: .75rem 1rem 1rem; margin: 0; display: grid; gap: .75rem; }
+  legend { padding: 0 .35rem; color: var(--muted); }
+  .row { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; }
+  .check { display: flex; gap: .6rem; align-items: baseline; }
+  .check input { flex: none; }
+  select, input[type=text] {
+    font: inherit; padding: .35rem .5rem; border-radius: .4rem; border: 1px solid var(--line); background: var(--card); color: var(--fg);
+  }
+  input[type=text] { width: 9rem; font-family: ui-monospace, monospace; text-transform: uppercase; }
+  .status { min-height: 1.5rem; margin-top: 1rem; }
+  .working { margin-top: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--card); display: grid; gap: .5rem; }
+  .working p { margin: 0; }
+  .stage { font-weight: 600; }
+  .working .detail { font-variant-numeric: tabular-nums; }
+  button.secondary { background: transparent; color: var(--accent); justify-self: start; }
+  details { border: 1px solid var(--line); border-radius: .75rem; padding: .75rem 1rem; }
+  details[open] { display: grid; gap: .6rem; }
+  summary { cursor: pointer; font-weight: 600; }
+  details ol { margin: 0; padding-left: 1.4rem; }
+  details p { margin: 0; }
+  .status.bad { color: var(--bad); }
+  progress { width: 100%; }
+  table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+  th, td { text-align: left; padding: .3rem .6rem; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; }
+  .n { text-align: right; font-variant-numeric: tabular-nums; }
+  .download { display: inline-block; margin-top: .75rem; padding: .55rem 1.1rem; border-radius: .5rem; background: var(--accent); color: var(--accent-fg); text-decoration: none; font-weight: 600; }
+  .scroll { max-height: 28rem; overflow: auto; border: 1px solid var(--line); border-radius: .5rem; }
+  .scroll th { position: sticky; top: 0; background: var(--card); }
+  code { font-family: ui-monospace, monospace; font-size: .9em; }
+  footer { margin-top: 3rem; font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Sort a card list by color</h1>
+  <p class="muted">White, Blue, Black, Red, Green, Multicolor, Colorless, then Lands: the way most sellers file a binder or a box.</p>
+  <p>Drop in a CSV from ManaBox, Moxfield, Deckbox, TCGplayer, or a spreadsheet. Each card is looked up on
+    <a href="https://scryfall.com">Scryfall</a> by its Scryfall ID, its set code and collector number, or its name, so the list doesn't need colors in it.
+    You get back the same file, rows reordered, with a <code>Scryfall ID</code> and a <code>Color Group</code> column.</p>
+  <p class="muted">Your file stays in your browser. Only the card identifiers are sent, to Scryfall.</p>
+
+  <form id="form">
+    <label class="drop" id="drop">
+      <strong>Choose a CSV, or drop it here</strong>
+      <input type="file" id="file" accept=".csv,.tsv,.txt,text/csv" required>
+    </label>
+
+    <fieldset>
+      <legend>Options</legend>
+      <div class="row">
+        <label for="by">Within each color</label>
+        <select id="by">
+          <option value="name">by name</option>
+          <option value="set">by set (oldest first), then collector number</option>
+          <option value="cmc">by mana value, then name</option>
+          <option value="original">in the file's order</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="order">Group order</label>
+        <input type="text" id="order" value="WUBRGMCL" spellcheck="false" autocomplete="off" aria-describedby="order-help">
+        <span class="muted" id="order-help">W U B R G, M multicolor, C colorless, L lands</span>
+      </div>
+      <label class="check"><input type="checkbox" id="identity"><span>Group by color identity (commander style: devoid cards and artifacts with colored abilities go under their colors)</span></label>
+      <label class="check"><input type="checkbox" id="columns" checked><span>Add the <code>Scryfall ID</code> and <code>Color Group</code> columns</span></label>
+    </fieldset>
+
+    <details id="power">
+      <summary>Big inventory? Use a Scryfall bulk file</summary>
+      <p>If you’re sorting thousands of cards, or doing this every week, grab Scryfall’s bulk data once and every card gets looked up right here on your computer instead of asked for over the internet.</p>
+      <ol>
+        <li>Go to <a href="https://scryfall.com/docs/api/bulk-data">Scryfall’s bulk data page</a>.</li>
+        <li>Download <strong>Default Cards</strong>. It’s every printing, in English where there is one, and it’s a few hundred MB. Not Oracle Cards (one printing per card, so your exact printings won’t match), and not Rulings.</li>
+        <li>Pick that file here. It stays in your browser, same as your CSV.</li>
+      </ol>
+      <p class="muted">Scryfall rebuilds these every day. Anything printed after your download still gets looked up the normal way, so you only need a fresh copy when a new set drops.</p>
+      <label class="row" for="bulk">Bulk file <input type="file" id="bulk" accept=".json,.gz,application/json,application/gzip"></label>
+      <label class="check"><input type="checkbox" id="offline"><span>Only use the bulk file (cards it doesn’t have go under “Not found”)</span></label>
+    </details>
+
+    <div><button type="submit" id="go">Sort</button></div>
+  </form>
+
+  <section class="working" id="working" hidden>
+    <p class="stage" id="stage" role="status" aria-live="polite"></p>
+    <progress id="progress" aria-labelledby="stage"></progress>
+    <p class="muted detail" id="detail"></p>
+    <button type="button" class="secondary" id="stop">Stop</button>
+  </section>
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+
+  <section id="results" hidden>
+    <h2>Sorted</h2>
+    <table id="groups" style="max-width: 22rem"><thead><tr><th scope="col">Group</th><th scope="col" class="n">Rows</th></tr></thead><tbody></tbody></table>
+    <a class="download" id="download" href="#">Download the sorted CSV</a>
+    <div id="missing" hidden>
+      <h2>Not found on Scryfall</h2>
+      <p class="muted">These rows are at the end of the file, under “Not found”. Check the spelling, or add a set code and collector number.</p>
+      <table><thead><tr><th scope="col" style="width: 5rem">Row</th><th scope="col">Card</th></tr></thead><tbody></tbody></table>
+    </div>
+    <h2>Preview</h2>
+    <p class="muted" id="preview-note"></p>
+    <div class="scroll"><table id="preview"><thead><tr><th scope="col">Group</th><th scope="col">Card</th><th scope="col">Set</th><th scope="col">Number</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <footer class="muted">Card data from <a href="https://scryfall.com">Scryfall</a>. Not affiliated with Wizards of the Coast or Scryfall.</footer>
+</main>
+
+<script src="sorter.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const form = $("form"), file = $("file"), drop = $("drop"), statusEl = $("status"), progress = $("progress");
+const PREVIEW = 200;
+let downloadUrl = null;
+let bulkCache = null; // { key, index }: the last bulk file read, kept for the next sort
+let stopper = null, countdown = null;
+
+const n = (x) => x.toLocaleString();
+const plural = (x, word) => `${n(x)} ${word}${x === 1 ? "" : "s"}`;
+const size = (bytes) => (bytes < 1e6 ? `${Math.max(1, Math.round(bytes / 1e3))} KB` : `${(bytes / 1e6).toFixed(bytes < 1e7 ? 1 : 0)} MB`);
+const left = (ms) => (ms < 1000 ? "" : ms < 60000 ? ` · about ${plural(Math.round(ms / 1000), "second")} left`
+  : ` · about ${plural(Math.round(ms / 60000), "minute")} left`);
+
+function setStatus(text, bad = false) {
+  statusEl.textContent = text;
+  statusEl.classList.toggle("bad", bad);
+}
+
+/** The working panel: `stage` is announced to screen readers, `detail` (counters) isn't. */
+function working(stage, detail = "", value = null, max = null) {
+  clearInterval(countdown);
+  if (stage != null && $("stage").textContent !== stage) $("stage").textContent = stage;
+  $("detail").textContent = detail;
+  if (value == null) progress.removeAttribute("value");
+  else { progress.max = max; progress.value = value; }
+}
+
+function rows(tbody, data) {
+  tbody.replaceChildren(...data.map((cells) => {
+    const tr = document.createElement("tr");
+    for (const [text, cls] of cells) {
+      const td = document.createElement("td");
+      td.textContent = text;
+      if (cls) td.className = cls;
+      tr.append(td);
+    }
+    return tr;
+  }));
+}
+
+for (const type of ["dragenter", "dragover"]) {
+  drop.addEventListener(type, (e) => { e.preventDefault(); drop.classList.add("over"); });
+}
+for (const type of ["dragleave", "drop"]) drop.addEventListener(type, () => drop.classList.remove("over"));
+drop.addEventListener("drop", (e) => {
+  e.preventDefault();
+  if (!e.dataTransfer.files.length) return;
+  file.files = e.dataTransfer.files;
+});
+
+$("stop").addEventListener("click", () => { if (stopper) stopper.abort(); });
+
+/** A File as text chunks, gunzipped if it's .gz, counting raw bytes as they're read. */
+async function* fileText(f, onBytes, signal) {
+  let stream = f.stream().pipeThrough(new TransformStream({
+    transform(chunk, out) { onBytes(chunk.byteLength); out.enqueue(chunk); },
+  }));
+  if (/\.gz$/i.test(f.name)) {
+    if (typeof DecompressionStream === "undefined") throw new Error("This browser can’t unzip .gz files. Unzip it first, or use the .json.");
+    stream = stream.pipeThrough(new DecompressionStream("gzip"));
+  }
+  const reader = stream.pipeThrough(new TextDecoderStream()).getReader();
+  try {
+    for (;;) {
+      if (signal.aborted) return;
+      const { done, value } = await reader.read();
+      if (done) return;
+      yield value;
+    }
+  } finally {
+    reader.cancel().catch(() => {});
+  }
+}
+
+async function loadBulk(f, signal) {
+  const key = `${f.name}|${f.size}|${f.lastModified}`;
+  if (bulkCache && bulkCache.key === key) return bulkCache.index;
+  bulkCache = null;
+  let bytes = 0;
+  working(`Reading the bulk file, ${f.name} (${size(f.size)})…`, "", 0, f.size);
+  const index = await MtgSort.readBulk(fileText(f, (b) => { bytes += b; }, signal), {
+    signal,
+    onProgress: ({ cards }) => working(null, `${plural(cards, "card")} · ${Math.round((100 * bytes) / f.size)}%`, bytes, f.size),
+  });
+  bulkCache = { key, index };
+  return index;
+}
+
+const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r)));
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const picked = file.files[0];
+  if (!picked) return;
+  const bulkFile = $("bulk").files[0] || null;
+  const offline = Boolean(bulkFile) && $("offline").checked;
+  stopper = new AbortController();
+  const signal = stopper.signal;
+  for (const el of form.elements) el.disabled = true;
+  $("results").hidden = true;
+  setStatus("");
+  $("working").hidden = false;
+  try {
+    const bulk = bulkFile ? await loadBulk(bulkFile, signal) : null;
+
+    working(`Reading ${picked.name} (${size(picked.size)})…`);
+    const text = await picked.text();
+    await nextFrame(); // let that show before the file is parsed
+
+    let pass = 0;
+    const result = await MtgSort.sortCsv(text, {
+      by: $("by").value,
+      order: $("order").value,
+      identity: $("identity").checked,
+      addColumns: $("columns").checked,
+      bulk, offline, signal,
+      onProgress: (p) => {
+        if (p.stage === "read") {
+          working(`Read ${plural(p.rows, "row")}. Finding cards by ${p.findBy}…`);
+        } else if (p.stage === "sort") {
+          working("Sorting…");
+        } else if (p.stage === "lookup" || p.stage === "retry") {
+          let stage = null;
+          if (p.pass !== pass) {
+            pass = p.pass;
+            stage = p.stage === "retry" ? `Trying ${plural(p.cards, "card")} again a different way…`
+              : bulk ? `Asking Scryfall about ${plural(p.cards, "card")} the bulk file doesn’t have…`
+              : `Looking up ${plural(p.cards, "card")} on Scryfall…`;
+          }
+          working(stage, `${n(p.found)} of ${n(p.cards)} found · ${p.done} of ${plural(p.total, "request")}${left(p.etaMs)}`, p.done, p.total);
+        }
+      },
+      onWait: ({ ms, attempt, retries }) => {
+        working("Scryfall asked us to slow down. Waiting, then carrying on.");
+        const until = Date.now() + ms;
+        const tick = () => {
+          $("detail").textContent = `Carrying on in ${Math.max(0, Math.ceil((until - Date.now()) / 1000))} s (wait ${attempt} of ${retries})`;
+        };
+        tick();
+        countdown = setInterval(tick, 1000);
+      },
+    });
+    show(result, picked.name);
+    const total = result.sorted.length;
+    const missing = result.notFound.length;
+    setStatus(`Sorted ${plural(total, "row")}.` +
+      (missing ? ` ${n(missing)} not found${offline ? " in the bulk file" : " on Scryfall"}.` : ""));
+  } catch (err) {
+    if (err.name === "AbortError") setStatus("Stopped. Nothing was sorted; your file is unchanged.");
+    else setStatus(err.message || String(err), true);
+  } finally {
+    clearInterval(countdown);
+    stopper = null;
+    for (const el of form.elements) el.disabled = false;
+    $("working").hidden = true;
+  }
+});
+
+function show(result, name) {
+  rows($("groups").tBodies[0], result.groups.map((g) => [[g.label], [g.count.toLocaleString(), "n"]]));
+
+  if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+  downloadUrl = URL.createObjectURL(new Blob([result.csv], { type: "text/csv;charset=utf-8" }));
+  const link = $("download");
+  link.href = downloadUrl;
+  link.download = name.replace(/(\.[^.]+)?$/, (ext) => `-sorted${ext || ".csv"}`);
+
+  $("missing").hidden = !result.notFound.length;
+  rows($("missing").querySelector("tbody"), result.notFound.map((m) => [[String(m.row)], [m.name]]));
+
+  const cols = result.columns;
+  const cell = (row, f) => (cols[f] >= 0 ? row[cols[f]] : "");
+  rows($("preview").tBodies[0], result.sorted.slice(0, PREVIEW).map((s) => [
+    [MtgSort.GROUPS[s.group]],
+    [s.card ? s.card.name : cell(s.row, "name")],
+    [s.card ? s.card.set.toUpperCase() : cell(s.row, "set")],
+    [s.card ? s.card.collector_number : cell(s.row, "collector_number")],
+  ]));
+  $("preview-note").textContent = result.sorted.length > PREVIEW
+    ? `The first ${PREVIEW} of ${result.sorted.length.toLocaleString()} rows.` : "";
+  $("results").hidden = false;
+}
+</script>
+</body>
+</html>

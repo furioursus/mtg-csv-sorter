@@ -12,11 +12,12 @@ const sink = () => { const s = { text: "", write: (t) => { s.text += t; } }; ret
 
 test("parseArgs reads options and rejects unknown ones", () => {
   assert.deepEqual(parseArgs(["in.csv", "-o", "out.csv", "--by", "set", "--identity", "--order", "LWUBRG", "--no-columns"]), {
-    by: "set", identity: true, order: "LWUBRG", addColumns: false, input: "in.csv", output: "out.csv",
+    by: "set", identity: true, order: "LWUBRG", addColumns: false, types: true, input: "in.csv", output: "out.csv",
     bulk: null, offline: false,
   });
   assert.deepEqual(parseArgs(["in.csv", "--bulk", "default-cards.json", "--offline"]).bulk, "default-cards.json");
   assert.throws(() => parseArgs(["in.csv", "--offline"]), /--offline needs --bulk/);
+  assert.equal(parseArgs(["in.csv", "--no-types"]).types, false);
   assert.throws(() => parseArgs(["--bogus"]), /Unknown option/);
   assert.throws(() => parseArgs(["-o"]), /needs a value/);
 });

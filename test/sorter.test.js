@@ -92,7 +92,7 @@ test("sortCsv sorts a ManaBox export W/U/B/R/G/Multi/Colorless/Lands, then by na
   assert.equal(calls.length, 1);
   assert.ok(calls[0].every((i) => i.id), "looks up by Scryfall ID when there is one");
   const rows = S.parseCsv(out.csv).rows;
-  assert.deepEqual(rows[0], ["Binder Name", "Name", "Set code", "Collector number", "Quantity", "Scryfall ID", "Color Group"]);
+  assert.deepEqual(rows[0], ["Binder Name", "Name", "Set code", "Collector number", "Quantity", "Scryfall ID", "Color Group", "Card Type"]);
   assert.deepEqual(rows.slice(1).map((r) => [r[1], r[6]]), [
     ["Swords to Plowshares", "White"],
     ["Delver of Secrets // Insectile Aberration", "Blue"],
@@ -122,10 +122,10 @@ test("sortCsv finds Scryfall IDs for a list without them and adds the column", a
   ]);
   const rows = S.parseCsv(out.csv).rows;
   assert.deepEqual(rows, [
-    ["Count", "Name", "Edition", "Collector Number", "Scryfall ID", "Color Group"],
-    ["2", "Opt", "dmr", "56", "d0e1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f02", "Blue"], // DMR's Opt, not XLN's
-    ["1", "Lightning Bolt", "", "", byName("Lightning Bolt").id, "Red"],
-    ["4", "Sol Ring", "c21", "263", byName("Sol Ring").id, "Colorless"],
+    ["Count", "Name", "Edition", "Collector Number", "Scryfall ID", "Color Group", "Card Type"],
+    ["2", "Opt", "dmr", "56", "d0e1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f02", "Blue", "Instant"], // DMR's Opt, not XLN's
+    ["1", "Lightning Bolt", "", "", byName("Lightning Bolt").id, "Red", "Instant"],
+    ["4", "Sol Ring", "c21", "263", byName("Sol Ring").id, "Colorless", "Artifact"],
   ]);
 });
 
@@ -264,11 +264,53 @@ test("sortCsv reports Scryfall errors and an unreachable Scryfall", async () => 
 test("sortCsv sorts within a group by set, mana value, or the file's order", async () => {
   const text = "Name,Scryfall ID\n" + ["Lightning Bolt", "Bonecrusher Giant // Stomp", "Fable of the Mirror-Breaker // Reflection of Kiki-Jiki"]
     .map((n) => `"${n}",${byName(n).id}`).join("\n");
-  const names = async (by) => (await S.sortCsv(text, { fetch: fakeFetch().fetch, ...fast, by })).sorted.map((s) => s.card.name);
+  const names = async (by) => (await S.sortCsv(text, { fetch: fakeFetch().fetch, ...fast, by, types: false })).sorted.map((s) => s.card.name);
   assert.deepEqual(await names("set"), ["Bonecrusher Giant // Stomp", "Lightning Bolt", "Fable of the Mirror-Breaker // Reflection of Kiki-Jiki"]);
   assert.deepEqual(await names("cmc"), ["Lightning Bolt", "Bonecrusher Giant // Stomp", "Fable of the Mirror-Breaker // Reflection of Kiki-Jiki"]);
   assert.deepEqual(await names("original"), ["Lightning Bolt", "Bonecrusher Giant // Stomp", "Fable of the Mirror-Breaker // Reflection of Kiki-Jiki"]);
   await assert.rejects(names("price"), /Unknown sort/);
+});
+
+test("cardType files each card under its front face's first type in the seller's order", () => {
+  const want = {
+    "Jace Beleren": "Planeswalker", "Llanowar Elves": "Creature", "Solemn Simulacrum": "Creature", // artifact creature
+    "Delver of Secrets // Insectile Aberration": "Creature", "Bonecrusher Giant // Stomp": "Creature",
+    Opt: "Instant", "Fire // Ice": "Instant", "Rhystic Study": "Enchantment", Bitterblossom: "Enchantment", // Kindred
+    "Fable of the Mirror-Breaker // Reflection of Kiki-Jiki": "Enchantment", Thoughtseize: "Sorcery",
+    "Agadeem's Awakening // Agadeem, the Undercrypt": "Sorcery", // the front, not the land back
+    "Swiftfoot Boots": "Equipment", "Smuggler's Copter": "Vehicle", "Test Spacecraft": "Spacecraft", "Sol Ring": "Artifact",
+    "Propaganda // Propaganda": "Enchantment", // reversible: no top-level type line
+    "Invasion of Zendikar // Awakened Skyclave": "Battle", Forest: "Land", "Dryad Arbor": "Land",
+  };
+  for (const [name, label] of Object.entries(want)) assert.equal(S.cardType(byName(name)).label, label, name);
+  assert.equal(S.cardType(null).label, "");
+});
+
+test("within a color, cards go Planeswalker, Creature, Instant, Enchantment, Sorcery, then artifacts: Equipment, Vehicles and Spacecraft, the rest", async () => {
+  const names = ["Sol Ring", "Test Spacecraft", "Smuggler's Copter", "Swiftfoot Boots", "Solemn Simulacrum",
+    "Opt", "Rhystic Study", "Jace Beleren", "Delver of Secrets // Insectile Aberration", "Invasion of Zendikar // Awakened Skyclave",
+    "Thoughtseize", "Bitterblossom", "Agadeem's Awakening // Agadeem, the Undercrypt"];
+  const text = "Name,Scryfall ID\n" + names.map((n) => `"${n}",${byName(n).id}`).join("\n");
+  const out = await S.sortCsv(text, { fetch: fakeFetch().fetch, ...fast });
+  assert.deepEqual(out.sorted.map((s) => [S.GROUPS[s.group], s.type, s.card.name]), [
+    ["Blue", "Planeswalker", "Jace Beleren"],
+    ["Blue", "Creature", "Delver of Secrets // Insectile Aberration"],
+    ["Blue", "Instant", "Opt"],
+    ["Blue", "Enchantment", "Rhystic Study"],
+    ["Black", "Enchantment", "Bitterblossom"],
+    ["Black", "Sorcery", "Agadeem's Awakening // Agadeem, the Undercrypt"],
+    ["Black", "Sorcery", "Thoughtseize"],
+    ["Green", "Battle", "Invasion of Zendikar // Awakened Skyclave"],
+    ["Colorless", "Creature", "Solemn Simulacrum"],
+    ["Colorless", "Equipment", "Swiftfoot Boots"],
+    ["Colorless", "Vehicle", "Smuggler's Copter"], // Vehicles and Spacecraft share a place, by name
+    ["Colorless", "Spacecraft", "Test Spacecraft"],
+    ["Colorless", "Artifact", "Sol Ring"],
+  ]);
+  const plain = await S.sortCsv(text, { fetch: fakeFetch().fetch, ...fast, types: false });
+  assert.deepEqual(plain.sorted.filter((s) => s.group === "U").map((s) => s.card.name),
+    ["Delver of Secrets // Insectile Aberration", "Jace Beleren", "Opt", "Rhystic Study"], "types: false is name order");
+  assert.equal(S.parseCsv(out.csv).rows[1][3], "Planeswalker", "Card Type column");
 });
 
 test("sortCsv takes a custom group order, keeps semicolons, and can leave columns alone", async () => {

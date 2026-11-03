@@ -53,7 +53,8 @@ test("main reads a gzipped bulk file and sorts offline, logging stages without c
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sorter-"));
   const input = path.join(dir, "in.csv"), bulk = path.join(dir, "default-cards.json.gz");
   fs.writeFileSync(input, "Name\nForest\nOpt\nNope\n");
-  fs.writeFileSync(bulk, zlib.gzipSync(JSON.stringify(CARDS)));
+  // Scryfall's current format: one card per line.
+  fs.writeFileSync(bulk, zlib.gzipSync(CARDS.map((c) => JSON.stringify(c)).join("\n") + "\n"));
   const stdout = sink(), stderr = sink();
   const noApi = async () => { throw new Error("asked Scryfall"); };
   assert.equal(await main([input, "--bulk", bulk, "--offline", "--no-columns"], { fetch: noApi, stdout, stderr }), 0);

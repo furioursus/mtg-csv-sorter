@@ -16,8 +16,8 @@ looking each card up on Scryfall. Writes to stdout unless -o is given.
   --identity            group by color identity instead of the card's color
   --order <groups>      group order, e.g. WUBRGMCL (default) or LWUBRGMC
   --no-columns          don't add the Scryfall ID and Color Group columns
-  --bulk <file>         look cards up in a Scryfall bulk file (Default Cards, .json or
-                        .json.gz) instead of the API; anything it doesn't have still
+  --bulk <file>         look cards up in a Scryfall bulk file (Default Cards: .json, .jsonl
+                        or .gz) instead of the API; anything it doesn't have still
                         goes to the API
   --offline             with --bulk, never ask the API
   -h, --help            show this

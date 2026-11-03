@@ -30,8 +30,33 @@ test("arraySplitter finds every element whatever the chunk boundaries", () => {
   for (let i = 0; i < BULK_TEXT.length; i += 97) assert.deepEqual(split(BULK_TEXT, [i]), cards);
 });
 
+test("arraySplitter reads JSON Lines, Scryfall's current format, whatever the chunk boundaries", () => {
+  const items = [{ name: "a } [ \" {", x: [1, { y: "]" }] }, { name: "\\" }, { e: {} }];
+  for (const text of [
+    items.map((x) => JSON.stringify(x)).join("\n") + "\n",
+    "\ufeff" + items.map((x) => JSON.stringify(x)).join("\r\n") + "\r\n", // BOM and CRLF
+    "\n\n" + items.map((x) => JSON.stringify(x)).join("\n"), // leading blank lines, no final newline
+  ]) {
+    for (let i = 0; i <= text.length; i++) {
+      for (let j = i; j <= text.length; j++) assert.deepEqual(split(text, [i, j]), items, `cut at ${i} and ${j}`);
+    }
+  }
+  const cards = JSON.parse(BULK_TEXT);
+  const lines = cards.map((c) => JSON.stringify(c)).join("\n") + "\n";
+  for (let i = 0; i < lines.length; i += 97) assert.deepEqual(split(lines, [i]), cards);
+});
+
+test("readBulk takes a JSON Lines file and finds the same cards as the array", async () => {
+  const lines = JSON.parse(BULK_TEXT).map((c) => JSON.stringify(c)).join("\n") + "\n";
+  const fromLines = await S.readBulk(chunked(lines, 1000));
+  const fromArray = await S.readBulk(chunked(BULK_TEXT, 1000));
+  assert.equal(fromLines.size, CARDS.length);
+  for (const c of CARDS) assert.deepEqual(fromLines.get(`id:${c.id}`), fromArray.get(`id:${c.id}`), c.name);
+});
+
 test("arraySplitter says so when the file stops partway", () => {
   assert.throws(() => split(BULK_TEXT.slice(0, BULK_TEXT.length / 2), []), /stops partway through/);
+  assert.throws(() => split('{"object": "card", "name": "Op', []), /stops partway through/);
 });
 
 test("readBulk indexes every printing by ID, set and number, and name, keeping only what's needed", async () => {

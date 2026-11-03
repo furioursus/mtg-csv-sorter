@@ -336,12 +336,15 @@
   }
 
   /**
-   * Splits a JSON array, fed as text in chunks of any size, into its elements, calling
-   * onItem with each one parsed. Lets a bulk file of hundreds of megabytes be read without
-   * holding it, or one string of it, in memory.
+   * Splits a bulk file, fed as text in chunks of any size, into its cards, calling onItem
+   * with each one parsed. Lets a file of hundreds of megabytes be read without holding it,
+   * or one string of it, in memory. Takes both of Scryfall's formats, told apart by the
+   * first character that isn't whitespace: JSON Lines (one card per line, what Scryfall
+   * serves now) and a single JSON array (its older format, still offered).
    */
   function arraySplitter(onItem) {
-    let depth = 0, inStr = false, esc = false, pending = "";
+    // base: the depth a card's own braces open from; 1 inside an array, 0 for JSON Lines.
+    let base = -1, depth = 0, inStr = false, esc = false, pending = "";
     return {
       push(chunk) {
         const text = pending + chunk;
@@ -350,6 +353,11 @@
         pending = "";
         for (; i < text.length; i++) {
           const c = text.charCodeAt(i);
+          if (base < 0) {
+            // Skip a byte-order mark and whitespace, then decide the format.
+            if (c === 0xfeff || c === 32 || c === 9 || c === 10 || c === 13) continue;
+            base = c === 91 ? 1 : 0; // [
+          }
           if (inStr) {
             if (esc) esc = false;
             else if (c === 92) esc = true; // backslash
@@ -359,9 +367,9 @@
           if (c === 34) inStr = true;
           else if (c === 123 || c === 91) { // { [
             depth++;
-            if (depth === 2) start = i;
+            if (depth === base + 1) start = i;
           } else if (c === 125 || c === 93) { // } ]
-            if (depth === 2) { onItem(JSON.parse(text.slice(start, i + 1))); start = -1; }
+            if (depth === base + 1) { onItem(JSON.parse(text.slice(start, i + 1))); start = -1; }
             depth--;
           }
         }

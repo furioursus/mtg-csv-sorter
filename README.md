@@ -49,7 +49,7 @@ If you’re sorting thousands of cards, or doing this every week, grab Scryfall�
 
 1) Go to [Scryfall’s bulk data page](https://scryfall.com/docs/api/bulk-data).
 2) Download **Default Cards**. It’s every printing, in English where there is one, and it’s a few hundred MB. Not Oracle Cards (one printing per card, so your exact printings won’t match), and not Rulings.
-3) In the browser, open **Big inventory? Use a Scryfall bulk file** and pick it. From the command line, pass `--bulk default-cards.json` (a `.json.gz` works too).
+3) In the browser, open **Big inventory? Use a Scryfall bulk file** and pick it. From the command line, pass `--bulk` and the file. Either of Scryfall's formats works (one card per line, `.jsonl`, or one JSON array, `.json`), gzipped or not.
 
 Scryfall rebuilds these every day. Anything printed after your download still gets looked up the normal way, so you only need a fresh copy when a new set drops. Tick **Only use the bulk file** (or pass `--offline`) to never touch the API.
 

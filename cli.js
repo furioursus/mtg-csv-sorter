@@ -13,9 +13,12 @@ looking each card up on Scryfall. Writes to stdout unless -o is given.
 
   -o, --output <file>   where to write the sorted CSV
   --by <how>            within a group: name (default), set, cmc, original
+  --no-types            within a color, don't file by card type first (Planeswalker,
+                        Creature, Instant, Enchantment, Sorcery, then artifacts:
+                        Equipment, Vehicles and Spacecraft, the rest)
   --identity            group by color identity instead of the card's color
   --order <groups>      group order, e.g. WUBRGMCL (default) or LWUBRGMC
-  --no-columns          don't add the Scryfall ID and Color Group columns
+  --no-columns          don't add the Scryfall ID, Color Group and Card Type columns
   --bulk <file>         look cards up in a Scryfall bulk file (Default Cards: .json, .jsonl
                         or .gz) instead of the API; anything it doesn't have still
                         goes to the API
@@ -25,7 +28,7 @@ looking each card up on Scryfall. Writes to stdout unless -o is given.
 
 function parseArgs(argv) {
   const opts = {
-    by: "name", identity: false, order: undefined, addColumns: true, input: null, output: null,
+    by: "name", identity: false, order: undefined, addColumns: true, types: true, input: null, output: null,
     bulk: null, offline: false,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -40,6 +43,7 @@ function parseArgs(argv) {
     else if (a === "--order") opts.order = value();
     else if (a === "--identity") opts.identity = true;
     else if (a === "--no-columns") opts.addColumns = false;
+    else if (a === "--no-types") opts.types = false;
     else if (a === "--bulk") opts.bulk = value();
     else if (a === "--offline") opts.offline = true;
     else if (a.startsWith("-")) throw new Error(`Unknown option ${a}`);

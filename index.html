@@ -214,7 +214,7 @@ button[aria-busy="true"] { cursor: progress !important; opacity: 1; animation: u
     <p class="sub">White, Blue, Black, Red, Green, Multicolor, Colorless, then Lands: the way most sellers file a binder or a box.</p>
     <p class="sub">Drop in a CSV from ManaBox, Moxfield, Deckbox, TCGplayer, or a spreadsheet. Each card is looked up on
       <a href="https://scryfall.com">Scryfall</a> by its Scryfall ID, its set code and collector number, or its name, so the list doesn't need colors in it.
-      You get back the same file, rows reordered, with a <code>Scryfall ID</code> and a <code>Color Group</code> column.</p>
+      You get back the same file, rows reordered, with <code>Scryfall ID</code>, <code>Color Group</code> and <code>Card Type</code> columns.</p>
     <p class="muted">Your file stays in your browser. Only the card identifiers are sent, to Scryfall.</p>
 
     <form class="entry" id="form">
@@ -239,8 +239,9 @@ button[aria-busy="true"] { cursor: progress !important; opacity: 1; animation: u
           <input type="text" id="order" value="WUBRGMCL" spellcheck="false" autocomplete="off" aria-describedby="order-help">
           <span class="muted" id="order-help">W U B R G · M multicolor · C colorless · L lands</span>
         </div>
+        <label class="check"><input type="checkbox" id="types" checked><span>Within each color, file by card type first: Planeswalker, Creature, Instant, Enchantment, Sorcery, then artifacts (Equipment, then Vehicles and Spacecraft, then the rest)</span></label>
         <label class="check"><input type="checkbox" id="identity"><span>Group by color identity (commander style: devoid cards and artifacts with colored abilities go under their colors)</span></label>
-        <label class="check"><input type="checkbox" id="columns" checked><span>Add the <code>Scryfall ID</code> and <code>Color Group</code> columns</span></label>
+        <label class="check"><input type="checkbox" id="columns" checked><span>Add the <code>Scryfall ID</code>, <code>Color Group</code> and <code>Card Type</code> columns</span></label>
       </fieldset>
 
       <details id="power">
@@ -281,7 +282,7 @@ button[aria-busy="true"] { cursor: progress !important; opacity: 1; animation: u
       <section>
         <h2>Preview</h2>
         <p class="sub muted" id="preview-note"></p>
-        <div class="scroll"><table id="preview"><thead><tr><th scope="col">Group</th><th scope="col">Card</th><th scope="col">Set</th><th scope="col">Number</th></tr></thead><tbody></tbody></table></div>
+        <div class="scroll"><table id="preview"><thead><tr><th scope="col">Group</th><th scope="col">Type</th><th scope="col">Card</th><th scope="col">Set</th><th scope="col">Number</th></tr></thead><tbody></tbody></table></div>
       </section>
     </section>
   </main>
@@ -407,6 +408,7 @@ form.addEventListener("submit", async (e) => {
       by: $("by").value,
       order: $("order").value,
       identity: $("identity").checked,
+      types: $("types").checked,
       addColumns: $("columns").checked,
       bulk, offline, signal,
       onProgress: (p) => {
@@ -479,6 +481,7 @@ function show(result, name) {
   const cell = (row, f) => (cols[f] >= 0 ? row[cols[f]] : "");
   rows($("preview").tBodies[0], result.sorted.slice(0, PREVIEW).map((s) => [
     [MtgSort.GROUPS[s.group]],
+    [s.type],
     [s.card ? s.card.name : cell(s.row, "name")],
     [s.card ? s.card.set.toUpperCase() : cell(s.row, "set")],
     [s.card ? s.card.collector_number : cell(s.row, "collector_number")],

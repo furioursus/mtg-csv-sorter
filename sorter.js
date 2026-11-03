@@ -447,6 +447,40 @@
     return line.split(" // ")[0];
   }
 
+  // The order cards are filed in within a color group. A card with two types goes under the
+  // first one here, so an artifact creature is a creature and an enchantment creature too.
+  const TYPES = [
+    ["planeswalker", "Planeswalker"], ["creature", "Creature"], ["instant", "Instant"],
+    ["enchantment", "Enchantment"], ["sorcery", "Sorcery"],
+    ["equipment", "Equipment"], ["vehicle", "Vehicle"], ["artifact", "Artifact"],
+    ["other", "Other"],
+  ];
+  const TYPE_RANK = Object.fromEntries(TYPES.map(([k], i) => [k, i]));
+
+  /**
+   * The card's place in TYPES, from its front face's type line ("Legendary Artifact — Vehicle"):
+   * card types before the " — ", subtypes after. Equipment, then Vehicles and Spacecraft,
+   * then other artifacts. Battles and anything else not listed are "other"; lands have
+   * their own color group, so they're "land" and keep their order.
+   * Returns { key, label }; label is what the Card Type column says.
+   */
+  function cardType(card) {
+    if (!card) return { key: "other", label: "" };
+    const [types, subtypes = ""] = frontTypeLine(card).split(" — ");
+    const t = new Set(types.split(/\s+/));
+    const sub = new Set(subtypes.split(/\s+/));
+    if (t.has("Land")) return { key: "land", label: "Land" };
+    for (const [key, label] of TYPES.slice(0, 5)) if (t.has(label)) return { key, label };
+    if (t.has("Artifact")) {
+      if (sub.has("Equipment")) return { key: "equipment", label: "Equipment" };
+      if (sub.has("Spacecraft")) return { key: "vehicle", label: "Spacecraft" };
+      if (sub.has("Vehicle")) return { key: "vehicle", label: "Vehicle" };
+      return { key: "artifact", label: "Artifact" };
+    }
+    const named = types.split(/\s+/).filter((w) => /^[A-Z]/.test(w) && !["Legendary", "Basic", "Snow", "World", "Ongoing", "Token"].includes(w));
+    return { key: "other", label: named.pop() || "Other" };
+  }
+
   /**
    * One of W U B R G M C L T X (see GROUPS).
    * opts.identity: sort by color identity (commander style) instead of the frame's color,
@@ -482,11 +516,13 @@
   };
 
   /**
-   * Sorts data rows by group, then by `opts.by` (name, set, cmc or original) within each group.
+   * Sorts data rows by group, then by card type (unless opts.types is false: Planeswalker,
+   * Creature, Instant, Enchantment, Sorcery, Equipment, Vehicle/Spacecraft, Artifact, other), then by `opts.by` (name, set, cmc or original) within each group.
    * `cards` is parallel to `rows` (from resolve). Ties keep the file's order.
    * Returns [{ row, card, group }] in the new order.
    */
   function sortRows(rows, cards, cols, opts = {}) {
+    const types = opts.types !== false;
     const order = groupOrder(opts.order);
     const rank = Object.fromEntries(order.map((g, i) => [g, i]));
     const by = BY[opts.by || "name"];
@@ -495,7 +531,7 @@
     const items = rows.map((row, i) => {
       const card = cards[i];
       return {
-        row, card, i, group: group(card, opts),
+        row, card, i, group: group(card, opts), type: cardType(card),
         name: card ? card.name : cell(row, "name"),
         set: card ? card.set : cell(row, "set").toLowerCase(),
         number: card ? card.collector_number : cell(row, "collector_number"),
@@ -503,16 +539,17 @@
         cmc: card && typeof card.cmc === "number" ? card.cmc : Infinity,
       };
     });
-    items.sort((a, b) => rank[a.group] - rank[b.group] || by(a, b) || a.i - b.i);
-    return items.map(({ row, card, group: g }) => ({ row, card, group: g }));
+    const typeRank = (item) => (types ? TYPE_RANK[item.type.key] ?? 0 : 0); // lands all share one rank
+    items.sort((a, b) => rank[a.group] - rank[b.group] || typeRank(a) - typeRank(b) || by(a, b) || a.i - b.i);
+    return items.map(({ row, card, group: g, type }) => ({ row, card, group: g, type: type.label }));
   }
 
   // ---------- the whole job ----------
 
   /**
    * CSV text in, sorted CSV text out.
-   * opts: by, identity, order (see sortRows/group), addColumns (default true: fills or adds
-   * a "Scryfall ID" column and adds a "Color Group" one), plus resolve's fetch, headers,
+   * opts: by, identity, order, types (see sortRows/group), addColumns (default true: fills or
+   * adds a "Scryfall ID" column and adds "Color Group" and "Card Type" ones), plus resolve's fetch, headers,
    * delayMs, retryMs, onProgress, onWait and signal. onProgress also gets
    * { stage: "read", rows, findBy } once the file is read (findBy: "Scryfall ID",
    * "set and collector number" or "name", what most rows will be looked up by) and
@@ -549,9 +586,12 @@
       if (idCol < 0) { idCol = outHeader.length; outHeader.push("Scryfall ID"); outRows.forEach((r) => r.push("")); }
       let groupCol = outHeader.findIndex((h) => norm(h) === "color group");
       if (groupCol < 0) { groupCol = outHeader.length; outHeader.push("Color Group"); outRows.forEach((r) => r.push("")); }
+      let typeCol = outHeader.findIndex((h) => norm(h) === "card type");
+      if (typeCol < 0) { typeCol = outHeader.length; outHeader.push("Card Type"); outRows.forEach((r) => r.push("")); }
       sorted.forEach((s, i) => {
         if (s.card && !SCRYFALL_ID.test(outRows[i][idCol].trim())) outRows[i][idCol] = s.card.id;
         outRows[i][groupCol] = GROUPS[s.group];
+        outRows[i][typeCol] = s.type;
       });
     }
 
@@ -572,6 +612,6 @@
   return {
     GROUPS, DEFAULT_ORDER, COLUMN_ALIASES,
     detectDelimiter, parseCsv, toCsv, findColumns, candidates, keysFor, arraySplitter, readBulk,
-    resolve, frameColors, group, groupOrder, sortRows, sortCsv,
+    resolve, frameColors, group, cardType, groupOrder, sortRows, sortCsv,
   };
 });

@@ -4,10 +4,11 @@ Sort a Magic: The Gathering card list the way most sellers file a binder or a bo
 
 **White → Blue → Black → Red → Green → Multicolor → Colorless → Lands**
 
-Give it a CSV from ManaBox, Moxfield, Deckbox, TCGplayer, or a spreadsheet you made yourself. It looks every card up on [Scryfall](https://scryfall.com), so the list doesn't need colors (or Scryfall IDs) in it, and hands back the same file with its rows reordered. Every column you had is kept, as it was. It adds two columns:
+Give it a CSV from ManaBox, Moxfield, Deckbox, TCGplayer, or a spreadsheet you made yourself. It looks every card up on [Scryfall](https://scryfall.com), so the list doesn't need colors (or Scryfall IDs) in it, and hands back the same file with its rows reordered. Every column you had is kept, as it was. It adds three columns:
 
 - **Scryfall ID**: filled in for any row that didn't have one (an existing `Scryfall ID` column is filled where it's blank, never overwritten)
 - **Color Group**: White, Blue, Black, Red, Green, Multicolor, Colorless, Lands, Tokens & other, or Not found
+- **Card Type**: Planeswalker, Creature, Instant, Enchantment, Sorcery, Equipment, Vehicle, Spacecraft, Artifact, Land, or the card's own type (Battle)
 
 No dependencies, no build, no server. It runs as a web page or from the command line. [DESIGN.md](DESIGN.md) explains the choices behind it.
 
@@ -35,7 +36,8 @@ Options:
   --by <how>            within a group: name (default), set, cmc, original
   --identity            group by color identity instead of the card's color
   --order <groups>      group order, e.g. WUBRGMCL (default) or LWUBRGMC
-  --no-columns          don't add the Scryfall ID and Color Group columns
+  --no-types            within a color, don't file by card type first
+  --no-columns          don't add the Scryfall ID, Color Group and Card Type columns
   --bulk <file>         look cards up in a Scryfall bulk file (see below); anything
                         it doesn't have still goes to the API
   --offline             with --bulk, never ask the API
@@ -92,7 +94,9 @@ Comma, semicolon, and tab-separated files all work; the output keeps the input's
 
 **Group by color identity** (`--identity`) groups by commander color identity instead: devoid cards go under the color in their cost, and an artifact with a `{W}` ability goes under white. Lands stay lands.
 
-Within a group, cards are sorted by name (numbers in names in numeric order), or by set (oldest first) and collector number, or by mana value, or left in the file's order. Ties keep the file's order.
+Within each color, cards are filed by type: **Planeswalker, Creature, Instant, Enchantment, Sorcery**, then **artifacts**, split into Equipment first, then Vehicles and Spacecraft, then everything else. Anything else (Battles, say) comes after. It goes by the front face, and a card with two types goes under the first one in that list, so an artifact creature or an enchantment creature files with the creatures. Untick **file by card type** (or pass `--no-types`) to skip this. A **Card Type** column says where each card went.
+
+Within a type, cards are sorted by name (numbers in names in numeric order), or by set (oldest first) and collector number, or by mana value, or left in the file's order. Ties keep the file's order.
 
 ## Tests
 

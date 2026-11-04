@@ -129,8 +129,8 @@ async function main(argv, { fetch = globalThis.fetch, stdout = process.stdout, s
         say.update(`  ${n(e.found)} of ${n(e.cards)} found, ${e.done}/${e.total} requests${left}`);
       }
     },
-    onWait: ({ ms, attempt, retries }) =>
-      say.line(`  Scryfall asked to slow down; waiting ${secs(ms)} (${attempt} of ${retries})`),
+    onWait: ({ ms, attempt, retries, reason }) =>
+      say.line(`  ${reason === "unreachable" ? "Couldn't reach Scryfall" : "Scryfall asked to slow down"}; waiting ${secs(ms)} (${attempt} of ${retries})`),
   });
   say.done();
 

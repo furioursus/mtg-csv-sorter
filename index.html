@@ -427,8 +427,10 @@ form.addEventListener("submit", async (e) => {
           working(stage, `${n(p.found)} of ${n(p.cards)} found · ${p.done} of ${plural(p.total, "request")}${left(p.etaMs)}`, p.done, p.total);
         }
       },
-      onWait: ({ ms, attempt, retries }) => {
-        working("Scryfall asked us to slow down. Waiting, then carrying on.");
+      onWait: ({ ms, attempt, retries, reason }) => {
+        working(reason === "unreachable"
+          ? "Lost touch with Scryfall, most likely its rate limit. Waiting, then trying again."
+          : "Scryfall asked us to slow down. Waiting, then carrying on.");
         const until = Date.now() + ms;
         const tick = () => {
           $("detail").textContent = `Carrying on in ${Math.max(0, Math.ceil((until - Date.now()) / 1000))} s (wait ${attempt} of ${retries})`;

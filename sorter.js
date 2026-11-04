@@ -160,7 +160,9 @@
   const DELAY_MS = 500;
   const MAX_DELAY_MS = 4000;
   const RETRIES = 4;
-  const RETRY_MS = 10000; // the first wait after a 429 when Scryfall doesn't say how long
+  const RETRY_MS = 30000; // the first wait when Scryfall doesn't say how long: its documented lockout
+
+  const browserOffline = () => typeof navigator !== "undefined" && navigator.onLine === false;
 
   /**
    * Spaces requests `delay` ms apart, start to start, and slows down for good after a 429.
@@ -205,8 +207,18 @@
         });
       } catch (e) {
         if (signal && signal.aborted) throw stopped();
-        const why = e && e.cause ? e.cause.message || e.cause.code : e && e.message;
-        throw new Error(`Couldn't reach Scryfall (${why || "network error"}). Check the connection and try again.`);
+        const why = (e && e.cause ? e.cause.message || e.cause.code : e && e.message) || "network error";
+        if (browserOffline()) throw new Error(`Couldn't reach Scryfall (${why}). Check the connection and try again.`);
+        // A browser reports Scryfall's 429 as a failed fetch, since the 429 has no CORS header: see DESIGN.md#hidden-429
+        if (attempt >= retries) {
+          throw new Error(`Couldn't reach Scryfall (${why}), even after ${retries} waits. Scryfall may be limiting requests, `
+            + "which a browser can't tell from a dropped connection. Check the connection, give it a few minutes, and try again.");
+        }
+        pace.slowDown();
+        const ms = retryMs * 2 ** attempt;
+        if (onWait) onWait({ ms, attempt: attempt + 1, retries, reason: "unreachable" });
+        await pace.wait(ms);
+        continue;
       }
       if (res.status === 429) {
         if (attempt >= retries) {
@@ -214,7 +226,7 @@
         }
         pace.slowDown();
         const ms = retryAfter(res) ?? retryMs * 2 ** attempt;
-        if (onWait) onWait({ ms, attempt: attempt + 1, retries });
+        if (onWait) onWait({ ms, attempt: attempt + 1, retries, reason: "limited" });
         await pace.wait(ms);
         continue;
       }
@@ -235,15 +247,16 @@
    * opts.headers: extra request headers (Node should send a User-Agent; browsers can't).
    * opts.delayMs: time between request starts (default 500, Scryfall's 2 a second for this endpoint).
    *   It doubles, up to 4 s, after each 429.
-   * opts.retryMs: first wait after a 429 when Scryfall sends no Retry-After (default 10 s,
-   *   doubling; four waits before giving up).
+   * opts.retryMs: first wait after a 429 with no Retry-After, or a fetch that fails outright
+   *   (default 30 s, Scryfall's lockout; doubling; four waits before giving up).
    * opts.onProgress({ stage, pass, cards, found, done, total, etaMs }): called as each pass
    *   starts and after each request. stage is "lookup" for the first pass and "retry" for the
    *   passes that try missed cards by their next identifier; cards is how many distinct cards
    *   this pass looks up and found how many of them it has found so far; done and total count
    *   requests over the whole run (total grows when a retry pass starts); etaMs is a guess at
    *   the time left for the passes planned so far.
-   * opts.onWait({ ms, attempt, retries }): called when a 429 makes it wait.
+   * opts.onWait({ ms, attempt, retries, reason }): called before each wait. reason is "limited"
+   *   for a 429, "unreachable" for a fetch that failed outright (how a browser sees a 429).
    * opts.bulk: an index from readBulk. Cards in it are found without asking Scryfall;
    *   the rest still go to the API, unless opts.offline is set.
    * opts.signal: an AbortSignal; aborting stops the run with an AbortError.

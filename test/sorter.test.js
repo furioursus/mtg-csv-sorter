@@ -175,13 +175,13 @@ test("a 429 waits as long as Retry-After says, then slows every later request", 
   const out = await S.sortCsv(["Scryfall ID", ...many.map((c) => c.id)].join("\n"), {
     fetch: timed, sleep: clock.sleep, now: clock.now, onWait: (w) => waits.push(w),
   });
-  assert.deepEqual(waits, [{ ms: 7000, attempt: 1, retries: 4 }]);
+  assert.deepEqual(waits, [{ ms: 7000, attempt: 1, retries: 4, reason: "limited" }]);
   // Retry-After's 7 s, then the delay doubled to 1 s for the next batch.
   assert.deepEqual(starts, [0, 7000, 8000]);
   assert.equal(out.groups[0].count, 80);
 });
 
-test("without Retry-After, a 429 waits 10, 20, 40, 80 seconds, then gives up", async () => {
+test("without Retry-After, a 429 waits 30, 60, 120, 240 seconds, then gives up", async () => {
   const clock = fakeClock();
   const waits = [];
   const busy = fakeFetch({ failFirst: 99 });
@@ -189,7 +189,7 @@ test("without Retry-After, a 429 waits 10, 20, 40, 80 seconds, then gives up", a
     S.sortCsv("Name\nOpt\n", { fetch: busy.fetch, sleep: clock.sleep, now: clock.now, onWait: (w) => waits.push(w.ms) }),
     /still limiting requests after 4 waits/,
   );
-  assert.deepEqual(waits, [10000, 20000, 40000, 80000]);
+  assert.deepEqual(waits, [30000, 60000, 120000, 240000]);
   assert.equal(busy.calls.length, 5);
 
   const twice = fakeFetch({ failFirst: 2 });
@@ -250,15 +250,49 @@ test("aborting ends a 429 wait at once, with the real timer", async () => {
     fetch: fakeFetch({ failFirst: 1 }).fetch, signal: stop.signal, onWait: () => setTimeout(() => stop.abort(), 20),
   });
   await assert.rejects(run, { name: "AbortError" });
-  assert.ok(Date.now() - t < 2000, "didn't sit out the 10 s wait");
+  assert.ok(Date.now() - t < 2000, "didn't sit out the 30 s wait");
 });
 
 test("sortCsv reports Scryfall errors and an unreachable Scryfall", async () => {
   const text = "Name\nOpt\n";
   const down = fakeFetch({ failFirst: 1, status: 503 });
   await assert.rejects(S.sortCsv(text, { fetch: down.fetch, ...fast }), /Scryfall answered 503/);
-  const offline = async () => { throw Object.assign(new TypeError("fetch failed"), { cause: new Error("getaddrinfo ENOTFOUND api.scryfall.com") }); };
-  await assert.rejects(S.sortCsv(text, { fetch: offline, ...fast }), /Couldn't reach Scryfall \(getaddrinfo ENOTFOUND/);
+  let tries = 0;
+  const offline = async () => { tries++; throw Object.assign(new TypeError("fetch failed"), { cause: new Error("getaddrinfo ENOTFOUND api.scryfall.com") }); };
+  await assert.rejects(S.sortCsv(text, { fetch: offline, ...fast }), /Couldn't reach Scryfall \(getaddrinfo ENOTFOUND api.scryfall.com\), even after 4 waits/);
+  assert.equal(tries, 5);
+});
+
+test("a fetch that fails outright, as a browser sees a 429, waits and tries again", async () => {
+  const clock = fakeClock();
+  const waits = [];
+  const { fetch, calls } = fakeFetch();
+  let failures = 2;
+  const blocked = async (url, init) => {
+    if (failures-- > 0) throw new TypeError("Failed to fetch");
+    return fetch(url, init);
+  };
+  const out = await S.sortCsv("Name\nOpt\n", { fetch: blocked, sleep: clock.sleep, now: clock.now, onWait: (w) => waits.push(w) });
+  assert.deepEqual(waits, [
+    { ms: 30000, attempt: 1, retries: 4, reason: "unreachable" },
+    { ms: 60000, attempt: 2, retries: 4, reason: "unreachable" },
+  ]);
+  assert.equal(calls.length, 1);
+  assert.equal(out.groups[0].code, "U");
+});
+
+test("a browser that says it's offline fails at once instead of waiting", async () => {
+  const had = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", { value: { onLine: false }, configurable: true, writable: true });
+  try {
+    let tries = 0;
+    const down = async () => { tries++; throw new TypeError("Failed to fetch"); };
+    await assert.rejects(S.sortCsv("Name\nOpt\n", { fetch: down, ...fast }), /^Error: Couldn't reach Scryfall \(Failed to fetch\)\. Check the connection/);
+    assert.equal(tries, 1);
+  } finally {
+    if (had) Object.defineProperty(globalThis, "navigator", had);
+    else delete globalThis.navigator;
+  }
 });
 
 test("sortCsv sorts within a group by set, mana value, or the file's order", async () => {

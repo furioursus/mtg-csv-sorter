@@ -117,10 +117,12 @@
   /**
    * The ways to look one row up, best first: Scryfall ID, then set + collector number,
    * then name + set, then name alone. Each is a Scryfall identifier with a key to match it back.
+   * A "Front // Back" name goes by its front face: Scryfall matches face names, never the full name.
    */
   function candidates(row, cols) {
     const get = (f) => (cols[f] >= 0 ? (row[cols[f]] || "").trim() : "");
-    const id = get("scryfall_id"), name = get("name"), cn = get("collector_number");
+    const id = get("scryfall_id"), cn = get("collector_number");
+    const name = get("name").split(/\s*\/\/\s*/)[0] || get("name");
     const set = SET_CODE.test(get("set")) ? get("set").toLowerCase() : "";
     const out = [];
     if (SCRYFALL_ID.test(id)) out.push({ key: `id:${id.toLowerCase()}`, ident: { id: id.toLowerCase() } });

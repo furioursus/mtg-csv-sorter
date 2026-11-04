@@ -145,6 +145,16 @@ test("sortCsv falls back to the name when the set column holds something Scryfal
   assert.deepEqual(out.notFound, [{ row: 3, name: "Not A Real Card" }]);
 });
 
+test("a Front // Back name is looked up by its front face, with or without a set", async () => {
+  const { fetch, calls } = fakeFetch();
+  const text = "Name,Set\nFire // Ice,\nDelver of Secrets // Insectile Aberration,\nBonecrusher Giant  //  Stomp,eld\n";
+  const out = await S.sortCsv(text, { fetch, ...fast });
+  assert.deepEqual(out.notFound, []);
+  assert.deepEqual(calls.flat(), [{ name: "Fire" }, { name: "Delver of Secrets" }, { name: "Bonecrusher Giant", set: "eld" }]);
+  assert.deepEqual(out.sorted.map((s) => s.card.name).sort(),
+    ["Bonecrusher Giant // Stomp", "Delver of Secrets // Insectile Aberration", "Fire // Ice"]);
+});
+
 test("sortCsv asks once per distinct card, in batches of 75", async () => {
   const many = Array.from({ length: 160 }, (_, i) => ({ ...byName("Opt"), id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`, name: `Card ${i}` }));
   const { fetch, calls } = fakeFetch({ cards: many });

@@ -1,12 +1,12 @@
 // A stand-in for POST https://api.scryfall.com/cards/collection over test/cards.json.
-// Matches like Scryfall: names any case (full name or any face's), set codes any case,
+// Matches like Scryfall: names any case (any face's name, never the full "Front // Back"), set codes any case,
 // and found cards in `data`, misses in `not_found`.
 "use strict";
 const CARDS = require("./cards.json");
 
 function match(ident, cards) {
   const lower = (s) => String(s).toLowerCase();
-  const names = (c) => [c.name, ...(c.card_faces || []).map((f) => f.name)].map(lower);
+  const names = (c) => [...c.name.split(" // "), ...(c.card_faces || []).map((f) => f.name)].map(lower);
   if (ident.id) return cards.find((c) => c.id === ident.id);
   if (ident.set && ident.collector_number) {
     return cards.find((c) => c.set === lower(ident.set) && c.collector_number === lower(ident.collector_number));

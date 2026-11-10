@@ -16,6 +16,18 @@ test("every CSS variable the page uses is defined by the shared tokens or the pa
 	assert.deepEqual(missing, [], "rename these after updating vendor/furioursus-ui");
 });
 
+test("the Pages workflow publishes every local file the page loads", () => {
+	const workflow = fs.readFileSync(path.join(root, ".github/workflows/pages.yml"), "utf8");
+	const cp = workflow.match(/cp -r (.+?) _site\//);
+	assert.ok(cp, "couldn't find the cp line in pages.yml");
+	const published = cp[1].split(/\s+/);
+	const local = [...page.matchAll(/(?:src|href)="([^"#:?]+)"/g)]
+		.map((m) => m[1].replace(/^\.\//, ""))
+		.filter((ref) => ref && ref !== "/");
+	const missing = local.filter((ref) => !published.some((p) => ref === p || ref.startsWith(`${p}/`)));
+	assert.deepEqual(missing, [], "add these to the cp line in .github/workflows/pages.yml");
+});
+
 test("the vendored theme script and tokens load before the page's own styles", () => {
 	const script = page.indexOf('src="vendor/furioursus-ui/theme.js"');
 	const sheet = page.indexOf('href="vendor/furioursus-ui/tokens.css"');

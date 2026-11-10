@@ -1,6 +1,7 @@
 name: Publish to GitHub Pages
 
-# Publishes the page (index.html + sorter.js) on every push to main.
+# Publishes the page (index.html, sorter.js, vendor/) on every push to main. test/page.test.js checks
+# that every local file index.html loads is in the cp list below.
 # One-time setup: Settings → Pages → Source: GitHub Actions.
 
 on:
@@ -29,7 +30,7 @@ jobs:
         with:
           node-version: "24"
       - run: npm test
-      - run: mkdir _site && cp -r index.html sorter.js LICENSE fonts og-image.jpg _site/
+      - run: mkdir _site && cp -r index.html sorter.js LICENSE fonts vendor og-image.jpg _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:

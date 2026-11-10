@@ -16,7 +16,7 @@ No dependencies, no build, no server. It runs as a web page or from the command 
 
 ## In a browser
 
-Use [the hosted page](https://furioursus.github.io/mtg-csv-sorter/), or download this repo and open `index.html` (it loads `sorter.js` from the same folder, so keep the two together). Double-clicking it works, and so does any static host. Choose or drop a CSV, press **Sort**, then **Download the sorted CSV**.
+Use [the hosted page](https://furioursus.github.io/mtg-csv-sorter/), or download this repo and open `index.html` (it loads `sorter.js` and the `vendor/` folder from beside it, so keep them together). Double-clicking it works, and so does any static host. Choose or drop a CSV, press **Sort**, then **Download the sorted CSV**.
 
 The file stays in your browser. Only the card identifiers go to Scryfall.
 

@@ -144,7 +144,7 @@
 
   // ---------- Scryfall ----------
 
-  /** The error a cancelled run throws (name "AbortError", like fetch's). */
+  /** The error a canceled run throws (name "AbortError", like fetch's). */
   function stopped() {
     const e = new Error("Stopped.");
     e.name = "AbortError";

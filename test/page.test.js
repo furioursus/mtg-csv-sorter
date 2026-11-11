@@ -36,3 +36,9 @@ test("the vendored theme script and tokens load before the page's own styles", (
 	assert.ok(meta !== -1 && meta < script, "theme-color meta must come before theme.js");
 	assert.ok(script !== -1 && sheet !== -1 && sheet < style, "tokens.css must load before <style>");
 });
+
+test("the theme toggle is left to theme.js, with no click handler of its own", () => {
+	// A second handler would switch the theme twice per click: furioursus-ui docs/theming.md.
+	assert.match(page, /<button[^>]*class="theme-toggle"[^>]*data-theme-toggle/);
+	assert.doesNotMatch(page, /furioursusTheme\.toggle\(/);
+});

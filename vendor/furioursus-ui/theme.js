@@ -17,9 +17,21 @@
 		}
 	};
 
+	// Every [data-theme-toggle] (ThemeToggle, or any button a page marks) names the theme it switches
+	// to, and a role="switch" also reports whether dark is on. Static HTML needs no other script.
+	function syncToggles(theme) {
+		const next = theme === "dark" ? "light" : "dark";
+		for (const el of document.querySelectorAll("[data-theme-toggle]")) {
+			el.title = `Switch to ${next} mode`;
+			if (el.getAttribute("role") === "switch") el.setAttribute("aria-checked", String(theme === "dark"));
+			else el.setAttribute("aria-label", `Switch to ${next} mode`);
+		}
+	}
+
 	function apply(theme) {
 		root.setAttribute("data-theme", theme);
 		document.querySelector('meta[name="theme-color"]')?.setAttribute("content", COLORS[theme]);
+		syncToggles(theme);
 		document.dispatchEvent(new CustomEvent("theme-changed", { detail: { theme } }));
 	}
 
@@ -42,6 +54,11 @@
 	addEventListener("pageshow", (e) => e.persisted && sync());
 	addEventListener("storage", (e) => e.key === KEY && sync());
 	document.addEventListener("theme-change", (e) => set(e.detail?.theme));
+	// FOOTGUN: the only click handler for toggles. A toggle that also handles its own click flips twice.
+	document.addEventListener("click", (e) => {
+		if (e.target.closest?.("[data-theme-toggle]")) set(current() === "dark" ? "light" : "dark");
+	});
+	document.addEventListener("DOMContentLoaded", () => syncToggles(current()));
 
 	window.furioursusTheme = {
 		get: current,
